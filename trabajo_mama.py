@@ -123,6 +123,9 @@ def obtener_peso_total(id_prod):
     return
 
 def obtener_detalles_movimientos_en_un_dia(specific_date: str) -> List[Tuple[Any, ...]]:
+    """
+    Obtiene todos los movimientos (entradas y salidas) para una fecha específica.
+    """
     query = """
     SELECT p.producto, m.tipo_mov, m.id_prod, m.cantidad 
     FROM movimiento m
@@ -130,6 +133,18 @@ def obtener_detalles_movimientos_en_un_dia(specific_date: str) -> List[Tuple[Any
     WHERE m.fecha_mov = %s;
     """
     resultados = ejecutar_query(query, (specific_date,))
+    if resultados:
+        return resultados
+    return []
+
+def buscar_producto_por_nombre(search_term: str) -> List[Tuple[Any, ...]]:
+    """
+    Busca productos por su nombre utilizando un término de búsqueda.
+    """
+    query = "SELECT id_prod, producto, peso FROM producto WHERE producto LIKE %s;"
+    # Añadimos los comodines '%' para la búsqueda LIKE
+    params = (f"%{search_term}%",)
+    resultados = ejecutar_query(query, params)
     if resultados:
         return resultados
     return []

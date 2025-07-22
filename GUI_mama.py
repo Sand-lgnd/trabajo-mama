@@ -51,10 +51,12 @@ class InventarioApp:
             (" Obtener stock actual de un producto", self.mostrar_entradas_op2),
             (" Obtener detalles de entradas en un día", self.mostrar_entradas_op3),
             (" Obtener detalles de salidas en un día", self.mostrar_entradas_op4),
-            (" Obtener el peso total que queda", self.mostrar_entradas_op5)
+            (" Obtener el peso total que queda", self.mostrar_entradas_op5),
+            (" Obtener detalles de movimientos en un día", self.mostrar_entradas_op6),
+            (" Buscar stock por nombre de producto", self.mostrar_entradas_op7)
         ]
         for texto, comando in opciones:
-            btn = ttk.Button(options_frame, text=texto, command=comando, width=30)
+            btn = ttk.Button(options_frame, text=texto, command=comando, width=40)
             btn.pack(pady=3, padx=5, fill=tk.X)
         
         # Botón de Salir
@@ -241,17 +243,93 @@ class InventarioApp:
         if stock is not None: 
             self._mostrar_resultados_texto(f"Peso total en existencia del producto:{producto_existe[1]}: {stock} ")
 
+    def mostrar_entradas_op6(self):
+        self._clear_input_frame()
+        ttk.Label(self.input_frame, text="Fecha (YYYY-MM-DD):").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.entrada_op6_fecha = ttk.Entry(self.input_frame, width=30)
+        self.entrada_op6_fecha.grid(row=0, column=1, padx=5, pady=5)
+        ttk.Button(self.input_frame, text="Consultar", command=self.ejecutar_op6).grid(row=1, column=0, columnspan=2, pady=10)
+
+    def ejecutar_op6(self):
+        fecha = self.entrada_op6_fecha.get()
+        if not fecha:
+            messagebox.showwarning("Entrada Inválida", "Por favor, ingrese una fecha.")
+            return
+        if not self._validate_date_format(fecha):
+            messagebox.showwarning("Formato Inválido", "El formato de fecha debe ser YYYY-MM-DD.")
+            return
+
+        self.limpiar_area_resultados()
+        detalles_movimientos = self._manejar_llamada_bd(fn_mime.obtener_detalles_movimientos_en_un_dia, fecha)
+        if detalles_movimientos:
+            texto_resultado = f"--- Detalles de Movimientos en {fecha} ---\n"
+            for movimiento in detalles_movimientos:
+                for i, nombre_columna in enumerate(COLUMN_NAMES_MOVIMIENTOS):
+                    texto_resultado += f"  {nombre_columna}: {movimiento[i]}\n"
+                texto_resultado += "-" * 20 + "\n"
+            self._mostrar_resultados_texto(texto_resultado)
+        elif isinstance(detalles_movimientos, list) and not detalles_movimientos:
+            self._mostrar_resultados_texto(f"No se encontraron movimientos para la fecha {fecha}.")
+
+    def mostrar_entradas_op7(self):
+        self._clear_input_frame()
+        ttk.Label(self.input_frame, text="Nombre del Producto:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.entrada_op7_nombre = ttk.Entry(self.input_frame, width=40)
+        self.entrada_op7_nombre.grid(row=0, column=1, padx=5, pady=5)
+        self.entrada_op7_nombre.bind("<KeyRelease>", self.actualizar_sugerencias_productos)
+
+        self.sugerencias_listbox = tk.Listbox(self.input_frame, width=40, height=5)
+        self.sugerencias_listbox.grid(row=1, column=1, padx=5, pady=2, sticky="w")
+        self.sugerencias_listbox.bind("<<ListboxSelect>>", self.seleccionar_sugerencia_producto)
+
+        ttk.Button(self.input_frame, text="Buscar Stock", command=self.ejecutar_op7).grid(row=2, column=0, columnspan=2, pady=10)
+        self.producto_seleccionado = None
+
+    def actualizar_sugerencias_productos(self, event):
+        termino_busqueda = self.entrada_op7_nombre.get()
+        if len(termino_busqueda) < 2:
+            self.sugerencias_listbox.delete(0, tk.END)
+            return
+
+        productos = self._manejar_llamada_bd(fn_mime.buscar_producto_por_nombre, termino_busqueda)
+        self.sugerencias_listbox.delete(0, tk.END)
+        if productos:
+            self.productos_sugeridos = {p[1]: p for p in productos} # Mapear nombre a tupla de producto
+            for nombre_producto in self.productos_sugeridos.keys():
+                self.sugerencias_listbox.insert(tk.END, nombre_producto)
+
+    def seleccionar_sugerencia_producto(self, event):
+        seleccion = self.sugerencias_listbox.curselection()
+        if seleccion:
+            nombre_producto = self.sugerencias_listbox.get(seleccion[0])
+            self.entrada_op7_nombre.delete(0, tk.END)
+            self.entrada_op7_nombre.insert(0, nombre_producto)
+            self.producto_seleccionado = self.productos_sugeridos[nombre_producto]
+            self.sugerencias_listbox.delete(0, tk.END) # Ocultar lista
+
+    def ejecutar_op7(self):
+        if not self.producto_seleccionado:
+            messagebox.showwarning("Entrada Inválida", "Por favor, seleccione un producto de la lista.")
+            return
+
+        id_producto = self.producto_seleccionado[0]
+        nombre_producto = self.producto_seleccionado[1]
+        self.limpiar_area_resultados()
+
+        stock = self._manejar_llamada_bd(fn_mime.obtener_stock, id_producto)
+        if stock is not None:
+            self._mostrar_resultados_texto(f"Stock actual de '{nombre_producto}' (ID: {id_producto}): {stock}")
+        else:
+            self._mostrar_resultados_texto(f"No se pudo obtener el stock para '{nombre_producto}'.")
+
 if __name__ == "__main__":
-    # Test de conexión inicial para feedback temprano si la BD no está accesible
     try:
-        # Intentar una conexión simple para ver si la BD está arriba
-        # Esto no es parte de db_logic.conexion_BD() para no acoplarlo tanto al inicio
         conn_test = fn_mime.mysql.connector.connect(
             host=fn_mime.DB_HOST,
             user=fn_mime.DB_USER,
             password=fn_mime.DB_PASSWORD,
             database=fn_mime.DB_NAME,
-            connection_timeout=5 # Timeout corto
+            connection_timeout=5
         )
         conn_test.close()
 
@@ -260,9 +338,8 @@ if __name__ == "__main__":
         app_root.mainloop()
 
     except fn_mime.mysql.connector.Error as err:
-        # Crear una ventana raíz temporal solo para mostrar el error si la conexión inicial falla
         error_root = tk.Tk()
-        error_root.withdraw() # Ocultar la ventana principal vacía
+        error_root.withdraw()
         messagebox.showerror("Error Crítico de Conexión",
                              f"No se pudo conectar a la base de datos '{fn_mime.DB_NAME}' en {fn_mime.DB_HOST}.\n"
                              f"Verifique que el servidor MySQL esté en ejecución y las credenciales sean correctas.\n\n"
