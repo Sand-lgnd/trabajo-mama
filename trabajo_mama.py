@@ -53,15 +53,26 @@ def ejecutar_query(query_string: str, params: Optional[tuple] = None) -> Optiona
 def obtener_detalles_producto(product_id: str):
     query = "SELECT * FROM producto WHERE id_prod = %s;"
     resultado = ejecutar_query(query, (product_id,))
-    print(resultado)
     if resultado and len(resultado) > 0:
         return resultado[0] 
     return None
 
+def producto_existe(id_prod: str) -> bool:
+    """Verifica si un producto existe en la base de datos."""
+    return obtener_detalles_producto(id_prod) is not None
+
 def insertar_movimiento(tipo_mov, fecha, id_prod, cantidad):
+    if not producto_existe(id_prod):
+        raise DatabaseError(f"El producto con ID '{id_prod}' no existe.")
+
+    cantidad_int = int(cantidad)
+    if tipo_mov == 'S':
+        stock_actual = obtener_stock(id_prod)
+        if stock_actual < cantidad_int:
+            raise DatabaseError(f"Stock insuficiente para el producto ID '{id_prod}'. Stock actual: {stock_actual}, Salida solicitada: {cantidad}.")
+
     query= "INSERT INTO movimiento (tipo_mov, fecha_mov, id_prod, cantidad) VALUES (%s, %s, %s, %s)"
-    resultado = ejecutar_query(query, (tipo_mov, fecha, id_prod, cantidad))
-    return print(resultado)
+    return ejecutar_query(query, (tipo_mov, fecha, id_prod, cantidad_int))
 
 def obtener_stock (id_prod):
     query = """
@@ -89,6 +100,30 @@ def obtener_detalles_entradas_en_un_dia(specific_date: str) -> List[Tuple[Any, .
         return resultados
     return []
 
+def obtener_stock_todos_los_productos():
+    """
+    Obtiene el stock actual y los detalles de todos los productos.
+    """
+    query = """
+    SELECT
+        p.id_prod,
+        p.producto,
+        COALESCE(SUM(CASE m.tipo_mov
+            WHEN 'E' THEN m.cantidad
+            WHEN 'S' THEN -m.cantidad
+        END), 0) AS stock_actual,
+        p.peso,
+        (COALESCE(SUM(CASE m.tipo_mov
+            WHEN 'E' THEN m.cantidad
+            WHEN 'S' THEN -m.cantidad
+        END), 0) * p.peso) AS peso_total_actual
+    FROM producto p
+    LEFT JOIN movimiento m ON p.id_prod = m.id_prod
+    GROUP BY p.id_prod, p.producto, p.peso
+    ORDER BY p.producto;
+    """
+    return ejecutar_query(query)
+
 def añadir_producto(id_prod: str, nombre: str, peso: float):
     """
     Añade un nuevo producto a la base de datos.
@@ -108,18 +143,27 @@ def eliminar_producto(id_prod: str):
 def insertar_movimientos_multiples(movimientos: List[Tuple[str, str, str, int]]):
     """
     Inserta una lista de movimientos en la base de datos usando una transacción.
+    Valida la existencia del producto y el stock antes de insertar.
     """
     conexion = None
     try:
         conexion = conexion_BD()
         cursor = conexion.cursor()
-        query = "INSERT INTO movimiento (tipo_mov, fecha_mov, id_prod, cantidad) VALUES (%s, %s, %s, %s)"
 
-        # executemany es ideal para este tipo de operaciones
+        # Validar todos los movimientos antes de intentar insertar
+        for tipo_mov, _, id_prod, cantidad in movimientos:
+            if not producto_existe(id_prod):
+                raise DatabaseError(f"El producto con ID '{id_prod}' no existe. Operación cancelada.")
+            if tipo_mov == 'S':
+                stock_actual = obtener_stock(id_prod)
+                if stock_actual < cantidad:
+                    raise DatabaseError(f"Stock insuficiente para '{id_prod}'. Stock: {stock_actual}, Solicitado: {cantidad}. Operación cancelada.")
+
+        query = "INSERT INTO movimiento (tipo_mov, fecha_mov, id_prod, cantidad) VALUES (%s, %s, %s, %s)"
         cursor.executemany(query, movimientos)
 
         conexion.commit()
-        return cursor.rowcount  # Devuelve el número de filas insertadas
+        return cursor.rowcount
 
     except mysql.connector.Error as err:
         if conexion:
