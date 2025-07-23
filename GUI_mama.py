@@ -55,7 +55,8 @@ class InventarioApp:
             (" Obtener detalles de movimientos en un día", self.mostrar_entradas_op6),
             (" Buscar stock por nombre de producto", self.mostrar_entradas_op7),
             (" Añadir Producto", self.mostrar_entradas_op8),
-            (" Eliminar Producto", self.mostrar_entradas_op9)
+            (" Eliminar Producto", self.mostrar_entradas_op9),
+            (" Insertar Múltiples Movimientos", self.mostrar_entradas_op10)
         ]
         for texto, comando in opciones:
             btn = ttk.Button(options_frame, text=texto, command=comando, width=40)
@@ -394,6 +395,101 @@ class InventarioApp:
                 self._mostrar_resultados_texto(f"Producto con ID '{id_prod}' eliminado con éxito.")
             else:
                 self._mostrar_resultados_texto(f"No se encontró ningún producto con el ID '{id_prod}'.")
+
+
+    def mostrar_entradas_op10(self):
+        self._clear_input_frame()
+        self.movimientos_entries = []
+
+        # Fecha unificada para todos los movimientos
+        ttk.Label(self.input_frame, text="Fecha para todos los movimientos (YYYY-MM-DD):").grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="w")
+        self.fecha_multi_mov = ttk.Entry(self.input_frame, width=30)
+        self.fecha_multi_mov.grid(row=0, column=2, columnspan=2, padx=5, pady=5)
+
+        # Frame para las filas de movimientos
+        self.movimientos_frame = ttk.Frame(self.input_frame)
+        self.movimientos_frame.grid(row=1, column=0, columnspan=5, pady=10)
+
+        # Botones de control
+        controles_frame = ttk.Frame(self.input_frame)
+        controles_frame.grid(row=2, column=0, columnspan=5)
+        ttk.Button(controles_frame, text="Añadir Movimiento", command=self.añadir_fila_movimiento).pack(side=tk.LEFT, padx=5)
+        ttk.Button(controles_frame, text="Guardar Todo", command=self.ejecutar_op10).pack(side=tk.LEFT, padx=5)
+
+        self.añadir_fila_movimiento() # Añadir la primera fila por defecto
+
+    def añadir_fila_movimiento(self):
+        row_index = len(self.movimientos_entries)
+        fila_frame = ttk.Frame(self.movimientos_frame)
+        fila_frame.pack(pady=2, fill=tk.X)
+
+        # Widgets para una fila de movimiento
+        ttk.Label(fila_frame, text="Tipo (E/S):").pack(side=tk.LEFT, padx=5)
+        tipo_mov = ttk.Combobox(fila_frame, values=["E", "S"], width=5)
+        tipo_mov.pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(fila_frame, text="ID Producto:").pack(side=tk.LEFT, padx=5)
+        id_prod = ttk.Entry(fila_frame, width=15)
+        id_prod.pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(fila_frame, text="Cantidad:").pack(side=tk.LEFT, padx=5)
+        cantidad = ttk.Entry(fila_frame, width=10)
+        cantidad.pack(side=tk.LEFT, padx=5)
+
+        btn_eliminar = ttk.Button(fila_frame, text="X", width=3, command=lambda f=fila_frame: self.eliminar_fila_movimiento(f))
+        btn_eliminar.pack(side=tk.RIGHT, padx=5)
+
+        # Guardar las entradas para poder leer sus valores después
+        self.movimientos_entries.append((fila_frame, tipo_mov, id_prod, cantidad))
+
+    def eliminar_fila_movimiento(self, frame_a_eliminar):
+        # Encontrar el frame y los widgets asociados para eliminarlos
+        for i, (frame, _, _, _) in enumerate(self.movimientos_entries):
+            if frame == frame_a_eliminar:
+                frame.destroy()
+                self.movimientos_entries.pop(i)
+                break
+
+    def ejecutar_op10(self):
+        fecha = self.fecha_multi_mov.get()
+        if not self._validate_date_format(fecha):
+            messagebox.showwarning("Fecha Inválida", "Por favor, ingrese una fecha válida (YYYY-MM-DD) para todos los movimientos.")
+            return
+
+        movimientos_para_db = []
+        for _, tipo_mov_entry, id_prod_entry, cantidad_entry in self.movimientos_entries:
+            tipo_mov = tipo_mov_entry.get()
+            id_prod = id_prod_entry.get()
+            cantidad_str = cantidad_entry.get()
+
+            if not all([tipo_mov, id_prod, cantidad_str]):
+                messagebox.showwarning("Fila Incompleta", "Por favor, complete todos los campos de todas las filas o elimine las filas vacías.")
+                return
+
+            if tipo_mov not in ["E", "S"]:
+                messagebox.showwarning("Dato Inválido", f"El tipo de movimiento '{tipo_mov}' no es válido. Use 'E' o 'S'.")
+                return
+
+            try:
+                cantidad = int(cantidad_str)
+            except ValueError:
+                messagebox.showwarning("Dato Inválido", f"La cantidad '{cantidad_str}' debe ser un número entero.")
+                return
+
+            movimientos_para_db.append((tipo_mov, fecha, id_prod, cantidad))
+
+        if not movimientos_para_db:
+            messagebox.showinfo("Nada que Guardar", "No hay movimientos para guardar.")
+            return
+
+        if not messagebox.askyesno("Confirmar Inserción", f"¿Está seguro de que desea insertar {len(movimientos_para_db)} movimientos con fecha {fecha}?"):
+            return
+
+        resultado = self._manejar_llamada_bd(fn_mime.insertar_movimientos_multiples, movimientos_para_db)
+        if resultado is not None:
+            self._mostrar_resultados_texto(f"Se han insertado {resultado} movimientos con éxito.")
+            # Limpiar la interfaz para la próxima inserción
+            self.mostrar_entradas_op10()
 
 
 if __name__ == "__main__":

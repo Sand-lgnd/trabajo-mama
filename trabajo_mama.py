@@ -105,6 +105,31 @@ def eliminar_producto(id_prod: str):
     params = (id_prod,)
     return ejecutar_query(query, params)
 
+def insertar_movimientos_multiples(movimientos: List[Tuple[str, str, str, int]]):
+    """
+    Inserta una lista de movimientos en la base de datos usando una transacción.
+    """
+    conexion = None
+    try:
+        conexion = conexion_BD()
+        cursor = conexion.cursor()
+        query = "INSERT INTO movimiento (tipo_mov, fecha_mov, id_prod, cantidad) VALUES (%s, %s, %s, %s)"
+
+        # executemany es ideal para este tipo de operaciones
+        cursor.executemany(query, movimientos)
+
+        conexion.commit()
+        return cursor.rowcount  # Devuelve el número de filas insertadas
+
+    except mysql.connector.Error as err:
+        if conexion:
+            conexion.rollback()
+        raise DatabaseError(f"Error al insertar múltiples movimientos: {err}")
+    finally:
+        if conexion and conexion.is_connected():
+            cursor.close()
+            conexion.close()
+
 def obtener_detalles_salidas_en_un_dia(specific_date: str) -> List[Tuple[Any, ...]]:
     query = """
     SELECT p.producto, m.tipo_mov, m.id_prod, m.cantidad 
