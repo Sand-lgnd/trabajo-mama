@@ -53,7 +53,9 @@ class InventarioApp:
             (" Obtener detalles de salidas en un día", self.mostrar_entradas_op4),
             (" Obtener el peso total que queda", self.mostrar_entradas_op5),
             (" Obtener detalles de movimientos en un día", self.mostrar_entradas_op6),
-            (" Buscar stock por nombre de producto", self.mostrar_entradas_op7)
+            (" Buscar stock por nombre de producto", self.mostrar_entradas_op7),
+            (" Añadir Producto", self.mostrar_entradas_op8),
+            (" Eliminar Producto", self.mostrar_entradas_op9)
         ]
         for texto, comando in opciones:
             btn = ttk.Button(options_frame, text=texto, command=comando, width=40)
@@ -104,15 +106,19 @@ class InventarioApp:
         ttk.Label(self.input_frame, text="Tipo de movimiento (E o S):").grid(row=0, column=0, padx=5, pady=5, sticky="w")
         self.entrada_op1_tipo_mov = ttk.Entry(self.input_frame, width=30)
         self.entrada_op1_tipo_mov.grid(row=0, column=1, padx=5, pady=5)
+        self.entrada_op1_tipo_mov.bind("<Return>", lambda event: self.ejecutar_op1())
         ttk.Label(self.input_frame, text="Fecha del movimiento(YYYY-MM-DD):").grid(row=1, column=0, padx=5, pady=5, sticky="w")
         self.entrada_op1_fecha_mov = ttk.Entry(self.input_frame, width=30)
         self.entrada_op1_fecha_mov.grid(row=1, column=1, padx=5, pady=5)
+        self.entrada_op1_fecha_mov.bind("<Return>", lambda event: self.ejecutar_op1())
         ttk.Label(self.input_frame, text="Código del producto:").grid(row=2, column=0, padx=5, pady=5, sticky="w")
         self.entrada_op1_id_prod = ttk.Entry(self.input_frame, width=30)
         self.entrada_op1_id_prod.grid(row=2, column=1, padx=5, pady=5)
+        self.entrada_op1_id_prod.bind("<Return>", lambda event: self.ejecutar_op1())
         ttk.Label(self.input_frame, text="Cantidad:").grid(row=3, column=0, padx=5, pady=5, sticky="w")
         self.entrada_op1_cantidad = ttk.Entry(self.input_frame, width=30)
         self.entrada_op1_cantidad.grid(row=3, column=1, padx=5, pady=5)
+        self.entrada_op1_cantidad.bind("<Return>", lambda event: self.ejecutar_op1())
         ttk.Button(self.input_frame, text="Consultar", command=self.ejecutar_op1).grid(row=4, column=0, columnspan=2, pady=10)
 
     def ejecutar_op1(self):
@@ -141,6 +147,7 @@ class InventarioApp:
         ttk.Label(self.input_frame, text="ID Producto:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
         self.entrada_op2_id_prod = ttk.Entry(self.input_frame, width=30) 
         self.entrada_op2_id_prod.grid(row=0, column=1, padx=5, pady=5)
+        self.entrada_op2_id_prod.bind("<Return>", lambda event: self.ejecutar_op2())
         ttk.Button(self.input_frame, text="Consultar", command=self.ejecutar_op2).grid(row=1, column=0, columnspan=2, pady=10)
 
     def ejecutar_op2(self): 
@@ -167,6 +174,7 @@ class InventarioApp:
         ttk.Label(self.input_frame, text="Fecha(YYYY-MM-DD):").grid(row=0, column=0, padx=5, pady=5, sticky="w")
         self.entrada_op3_fecha = ttk.Entry(self.input_frame, width=30)
         self.entrada_op3_fecha.grid(row=0, column=1, padx=5, pady=5)
+        self.entrada_op3_fecha.bind("<Return>", lambda event: self.ejecutar_op3())
         ttk.Button(self.input_frame, text="Consultar", command=self.ejecutar_op3).grid(row=1, column=0, columnspan=2, pady=10)
 
     def ejecutar_op3(self): 
@@ -194,6 +202,7 @@ class InventarioApp:
         ttk.Label(self.input_frame, text="Fecha(YYYY-MM-DD):").grid(row=0, column=0, padx=5, pady=5, sticky="w")
         self.entrada_op4_fecha = ttk.Entry(self.input_frame, width=30)
         self.entrada_op4_fecha.grid(row=0, column=1, padx=5, pady=5)
+        self.entrada_op4_fecha.bind("<Return>", lambda event: self.ejecutar_op4())
         ttk.Button(self.input_frame, text="Consultar", command=self.ejecutar_op4).grid(row=1, column=0, columnspan=2, pady=10)
 
     def ejecutar_op4(self): 
@@ -222,6 +231,7 @@ class InventarioApp:
         ttk.Label(self.input_frame, text="ID Producto:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
         self.entrada_op5_id_prod = ttk.Entry(self.input_frame, width=30) 
         self.entrada_op5_id_prod.grid(row=0, column=1, padx=5, pady=5)
+        self.entrada_op5_id_prod.bind("<Return>", lambda event: self.ejecutar_op5())
         ttk.Button(self.input_frame, text="Consultar", command=self.ejecutar_op5).grid(row=1, column=0, columnspan=2, pady=10)
 
     def ejecutar_op5(self): 
@@ -248,6 +258,7 @@ class InventarioApp:
         ttk.Label(self.input_frame, text="Fecha (YYYY-MM-DD):").grid(row=0, column=0, padx=5, pady=5, sticky="w")
         self.entrada_op6_fecha = ttk.Entry(self.input_frame, width=30)
         self.entrada_op6_fecha.grid(row=0, column=1, padx=5, pady=5)
+        self.entrada_op6_fecha.bind("<Return>", lambda event: self.ejecutar_op6())
         ttk.Button(self.input_frame, text="Consultar", command=self.ejecutar_op6).grid(row=1, column=0, columnspan=2, pady=10)
 
     def ejecutar_op6(self):
@@ -321,6 +332,69 @@ class InventarioApp:
             self._mostrar_resultados_texto(f"Stock actual de '{nombre_producto}' (ID: {id_producto}): {stock}")
         else:
             self._mostrar_resultados_texto(f"No se pudo obtener el stock para '{nombre_producto}'.")
+
+    def mostrar_entradas_op8(self):
+        self._clear_input_frame()
+        ttk.Label(self.input_frame, text="ID Producto:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.entrada_op8_id = ttk.Entry(self.input_frame, width=30)
+        self.entrada_op8_id.grid(row=0, column=1, padx=5, pady=5)
+        self.entrada_op8_id.bind("<Return>", lambda event: self.ejecutar_op8())
+
+        ttk.Label(self.input_frame, text="Nombre:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.entrada_op8_nombre = ttk.Entry(self.input_frame, width=30)
+        self.entrada_op8_nombre.grid(row=1, column=1, padx=5, pady=5)
+        self.entrada_op8_nombre.bind("<Return>", lambda event: self.ejecutar_op8())
+
+        ttk.Label(self.input_frame, text="Peso:").grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        self.entrada_op8_peso = ttk.Entry(self.input_frame, width=30)
+        self.entrada_op8_peso.grid(row=2, column=1, padx=5, pady=5)
+        self.entrada_op8_peso.bind("<Return>", lambda event: self.ejecutar_op8())
+
+        ttk.Button(self.input_frame, text="Añadir", command=self.ejecutar_op8).grid(row=3, column=0, columnspan=2, pady=10)
+
+    def ejecutar_op8(self):
+        id_prod = self.entrada_op8_id.get()
+        nombre = self.entrada_op8_nombre.get()
+        peso_str = self.entrada_op8_peso.get()
+
+        if not id_prod or not nombre or not peso_str:
+            messagebox.showwarning("Entrada Inválida", "Todos los campos son obligatorios.")
+            return
+
+        try:
+            peso = float(peso_str)
+        except ValueError:
+            messagebox.showwarning("Entrada Inválida", "El peso debe ser un número.")
+            return
+
+        resultado = self._manejar_llamada_bd(fn_mime.añadir_producto, id_prod, nombre, peso)
+        if resultado is not None:
+            self._mostrar_resultados_texto(f"Producto '{nombre}' añadido con éxito.")
+
+    def mostrar_entradas_op9(self):
+        self._clear_input_frame()
+        ttk.Label(self.input_frame, text="ID Producto a Eliminar:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.entrada_op9_id = ttk.Entry(self.input_frame, width=30)
+        self.entrada_op9_id.grid(row=0, column=1, padx=5, pady=5)
+        self.entrada_op9_id.bind("<Return>", lambda event: self.ejecutar_op9())
+        ttk.Button(self.input_frame, text="Eliminar", command=self.ejecutar_op9).grid(row=1, column=0, columnspan=2, pady=10)
+
+    def ejecutar_op9(self):
+        id_prod = self.entrada_op9_id.get()
+        if not id_prod:
+            messagebox.showwarning("Entrada Inválida", "Por favor, ingrese un ID de producto.")
+            return
+
+        if not messagebox.askyesno("Confirmar Eliminación", f"¿Está seguro de que desea eliminar el producto con ID '{id_prod}'? Esta acción no se puede deshacer."):
+            return
+
+        resultado = self._manejar_llamada_bd(fn_mime.eliminar_producto, id_prod)
+        if resultado is not None:
+            if resultado > 0:
+                self._mostrar_resultados_texto(f"Producto con ID '{id_prod}' eliminado con éxito.")
+            else:
+                self._mostrar_resultados_texto(f"No se encontró ningún producto con el ID '{id_prod}'.")
+
 
 if __name__ == "__main__":
     try:

@@ -89,6 +89,22 @@ def obtener_detalles_entradas_en_un_dia(specific_date: str) -> List[Tuple[Any, .
         return resultados
     return []
 
+def añadir_producto(id_prod: str, nombre: str, peso: float):
+    """
+    Añade un nuevo producto a la base de datos.
+    """
+    query = "INSERT INTO producto (id_prod, producto, peso) VALUES (%s, %s, %s);"
+    params = (id_prod, nombre, peso)
+    return ejecutar_query(query, params)
+
+def eliminar_producto(id_prod: str):
+    """
+    Elimina un producto de la base de datos.
+    """
+    query = "DELETE FROM producto WHERE id_prod = %s;"
+    params = (id_prod,)
+    return ejecutar_query(query, params)
+
 def obtener_detalles_salidas_en_un_dia(specific_date: str) -> List[Tuple[Any, ...]]:
     query = """
     SELECT p.producto, m.tipo_mov, m.id_prod, m.cantidad 
