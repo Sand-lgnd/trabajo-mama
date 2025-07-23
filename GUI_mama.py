@@ -301,10 +301,18 @@ class InventarioApp:
         page_resultados = self.resultados[start_index:end_index]
 
         texto_resultado = ""
-        for item in page_resultados:
-            for i, nombre_columna in enumerate(COLUMN_NAMES_MOVIMIENTOS):
-                 texto_resultado += f"  {nombre_columna}: {item[i]}\n"
-            texto_resultado += "-" * 20 + "\n"
+        # Adaptamos la visualización dependiendo de los datos que recibimos
+        if len(page_resultados[0]) == len(COLUMN_NAMES_MOVIMIENTOS): # Es una lista de movimientos
+            for item in page_resultados:
+                for i, nombre_columna in enumerate(COLUMN_NAMES_MOVIMIENTOS):
+                    texto_resultado += f"  {nombre_columna}: {item[i]}\n"
+                texto_resultado += "-" * 20 + "\n"
+        else: # Es una lista de stock de productos
+            cabeceras = ["ID", "Nombre", "Stock", "Peso Unit.", "Peso Total"]
+            for item in page_resultados:
+                for i, cabecera in enumerate(cabeceras):
+                    texto_resultado += f"  {cabecera}: {item[i]}\n"
+                texto_resultado += "-" * 20 + "\n"
         self._mostrar_resultados_texto(texto_resultado)
 
         # Actualizar estado de los botones
@@ -365,6 +373,18 @@ class InventarioApp:
             self.sugerencias_listbox.selection_clear(0, tk.END)
             self.sugerencias_listbox.selection_set(index)
             self.sugerencias_listbox.activate(index)
+
+    def mostrar_stock_total(self):
+        self._clear_input_frame()
+        self.limpiar_area_resultados()
+
+        stock_total = self._manejar_llamada_bd(fn_mime.obtener_stock_todos_los_productos)
+
+        if stock_total:
+            # Reutilizamos la función de paginación
+            self.mostrar_resultados_paginados(stock_total, "Stock de Todos los Productos")
+        else:
+            self._mostrar_resultados_texto("No hay productos en el inventario.")
 
     def ejecutar_op7(self):
         if not self.producto_seleccionado:
@@ -568,6 +588,7 @@ class InventarioApp:
         menubar.add_cascade(label="Consultas", menu=consultas_menu)
         consultas_menu.add_command(label="Stock Actual por ID", command=self.mostrar_entradas_op2)
         consultas_menu.add_command(label="Stock por Nombre de Producto", command=self.mostrar_entradas_op7)
+        consultas_menu.add_command(label="Ver Stock de Todos los Productos", command=self.mostrar_stock_total)
         consultas_menu.add_command(label="Peso Total Restante", command=self.mostrar_entradas_op5)
         consultas_menu.add_separator()
         consultas_menu.add_command(label="Detalles de Entradas en un Día", command=self.mostrar_entradas_op3)
