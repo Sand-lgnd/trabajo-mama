@@ -133,3 +133,36 @@ def obtener_detalles_movimientos_en_un_dia(specific_date: str) -> List[Tuple[Any
     if resultados:
         return resultados
     return []
+def obtener_detalles_movimientos_semanales(fecha_inicio: str, tipo_mov: str) -> List[Tuple[Any, ...]]:
+    """Obtiene los detalles de los movimientos (E o S) en un rango de 7 días a partir de la fecha dada."""
+    query = """
+    SELECT p.producto, m.tipo_mov, m.id_prod, m.cantidad, m.fecha_mov
+    FROM movimiento m
+    JOIN producto p on m.id_prod = p.id_prod
+    WHERE m.tipo_mov = %s AND m.fecha_mov BETWEEN %s AND DATE_ADD(%s, INTERVAL 6 DAY);
+    """
+    resultados = ejecutar_query(query, (tipo_mov, fecha_inicio, fecha_inicio))
+    return resultados if resultados else []
+
+def obtener_detalles_movimientos_mensuales(mes: int, tipo_mov: str) -> List[Tuple[Any, ...]]:
+    """Obtiene los detalles de los movimientos (E o S) para un mes específico (dígito del mes)."""
+    query = """
+    SELECT p.producto, m.tipo_mov, m.id_prod, m.cantidad, m.fecha_mov
+    FROM movimiento m
+    JOIN producto p on m.id_prod = p.id_prod
+    WHERE m.tipo_mov = %s AND MONTH(m.fecha_mov) = %s;
+    """
+    resultados = ejecutar_query(query, (tipo_mov, mes))
+    return resultados if resultados else []
+
+def obtener_total_salidas_por_producto_conjunto(patron_nombre: str) -> List[Tuple[Any, ...]]:
+    """Obtiene el total de salidas para productos cuyo nombre coincida con el patrón dado (ej. 'calamar')."""
+    query = """
+    SELECT p.producto, SUM(m.cantidad)
+    FROM movimiento m
+    JOIN producto p on m.id_prod = p.id_prod
+    WHERE m.tipo_mov = 'S' AND p.producto LIKE %s
+    GROUP BY p.id_prod, p.producto;
+    """
+    resultados = ejecutar_query(query, (f"%{patron_nombre}%",))
+    return resultados if resultados else []
