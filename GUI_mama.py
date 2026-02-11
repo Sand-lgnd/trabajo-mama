@@ -8,6 +8,8 @@ from PIL import Image, ImageTk
 # Constantes para nombres de columnas
 COLUMN_NAMES_PRODUCTO = ["Código del Producto", "Nombre", "Peso"]
 COLUMN_NAMES_MOVIMIENTOS = ["Nombre","Tipo de Movimiento", "Código del Producto", "Cantidad"]
+COLUMN_NAMES_MOVIMIENTOS_CON_FECHA = ["Nombre", "Tipo", "ID", "Cantidad", "Fecha"]
+COLUMN_NAMES_CONJUNTO = ["Nombre del Producto", "Cantidad Total de Salida"]
 
 class InventarioApp:
     def __init__(self, root):
@@ -51,7 +53,10 @@ class InventarioApp:
             (" Obtener stock actual de un producto", self.mostrar_entradas_op2),
             (" Obtener detalles de entradas en un día", self.mostrar_entradas_op3),
             (" Obtener detalles de salidas en un día", self.mostrar_entradas_op4),
-            (" Obtener el peso total que queda", self.mostrar_entradas_op5)
+            (" Obtener el peso total que queda", self.mostrar_entradas_op5),
+            (" Obtener movimientos semanales", self.mostrar_entradas_op6),
+            (" Obtener movimientos mensuales", self.mostrar_entradas_op7),
+            (" Obtener salidas por conjunto", self.mostrar_entradas_op8)
         ]
         for texto, comando in opciones:
             btn = ttk.Button(options_frame, text=texto, command=comando, width=30)
@@ -240,6 +245,113 @@ class InventarioApp:
         stock = self._manejar_llamada_bd(fn_mime.obtener_peso_total, id_producto)
         if stock is not None: 
             self._mostrar_resultados_texto(f"Peso total en existencia del producto:{producto_existe[1]}: {stock} ")
+
+    def mostrar_entradas_op6(self):
+        self._clear_input_frame()
+        ttk.Label(self.input_frame, text="Fecha inicio (YYYY-MM-DD):").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.entrada_op6_fecha = ttk.Entry(self.input_frame, width=30)
+        self.entrada_op6_fecha.grid(row=0, column=1, padx=5, pady=5)
+        ttk.Label(self.input_frame, text="Tipo (E o S):").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.entrada_op6_tipo = ttk.Entry(self.input_frame, width=30)
+        self.entrada_op6_tipo.grid(row=1, column=1, padx=5, pady=5)
+        ttk.Button(self.input_frame, text="Consultar", command=self.ejecutar_op6).grid(row=2, column=0, columnspan=2, pady=10)
+
+    def ejecutar_op6(self):
+        fecha = self.entrada_op6_fecha.get()
+        tipo = self.entrada_op6_tipo.get().upper()
+        if not fecha or not tipo:
+            messagebox.showwarning("Entrada Inválida", "Por favor, complete todos los campos.")
+            return
+        if not self._validate_date_format(fecha):
+            messagebox.showwarning("Formato Inválido", "El formato de fecha debe ser YYYY-MM-DD.")
+            return
+        if tipo not in ['E', 'S']:
+            messagebox.showwarning("Tipo Inválido", "El tipo debe ser 'E' o 'S'.")
+            return
+
+        self.limpiar_area_resultados()
+        resultados = self._manejar_llamada_bd(fn_mime.obtener_detalles_movimientos_semanales, fecha, tipo)
+        if resultados:
+            texto_resultado = f"--- Movimientos Semanales ({tipo}) desde {fecha} ---\n"
+            total_cantidad = 0
+            for row in resultados:
+                for i, col in enumerate(COLUMN_NAMES_MOVIMIENTOS_CON_FECHA):
+                    texto_resultado += f"  {col}: {row[i]}\n"
+                total_cantidad += float(row[3]) # row[3] is cantidad
+                texto_resultado += "-" * 20 + "\n"
+            texto_resultado += f"\nTOTAL CANTIDAD: {total_cantidad}\n"
+            self._mostrar_resultados_texto(texto_resultado)
+        elif isinstance(resultados, list) and not resultados:
+            self._mostrar_resultados_texto(f"No se encontraron movimientos para el periodo seleccionado.")
+
+    def mostrar_entradas_op7(self):
+        self._clear_input_frame()
+        ttk.Label(self.input_frame, text="Dígito del Mes (1-12):").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.entrada_op7_mes = ttk.Entry(self.input_frame, width=30)
+        self.entrada_op7_mes.grid(row=0, column=1, padx=5, pady=5)
+        ttk.Label(self.input_frame, text="Tipo (E o S):").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.entrada_op7_tipo = ttk.Entry(self.input_frame, width=30)
+        self.entrada_op7_tipo.grid(row=1, column=1, padx=5, pady=5)
+        ttk.Button(self.input_frame, text="Consultar", command=self.ejecutar_op7).grid(row=2, column=0, columnspan=2, pady=10)
+
+    def ejecutar_op7(self):
+        mes = self.entrada_op7_mes.get()
+        tipo = self.entrada_op7_tipo.get().upper()
+        if not mes or not tipo:
+            messagebox.showwarning("Entrada Inválida", "Por favor, complete todos los campos.")
+            return
+        try:
+            mes_int = int(mes)
+            if not (1 <= mes_int <= 12): raise ValueError()
+        except ValueError:
+            messagebox.showwarning("Mes Inválido", "Por favor, ingrese un número de mes válido (1-12).")
+            return
+        if tipo not in ['E', 'S']:
+            messagebox.showwarning("Tipo Inválido", "El tipo debe ser 'E' o 'S'.")
+            return
+
+        self.limpiar_area_resultados()
+        resultados = self._manejar_llamada_bd(fn_mime.obtener_detalles_movimientos_mensuales, mes_int, tipo)
+        if resultados:
+            texto_resultado = f"--- Movimientos Mensuales ({tipo}) Mes {mes} ---\n"
+            total_cantidad = 0
+            for row in resultados:
+                for i, col in enumerate(COLUMN_NAMES_MOVIMIENTOS_CON_FECHA):
+                    texto_resultado += f"  {col}: {row[i]}\n"
+                total_cantidad += float(row[3]) # row[3] is cantidad
+                texto_resultado += "-" * 20 + "\n"
+            texto_resultado += f"\nTOTAL CANTIDAD: {total_cantidad}\n"
+            self._mostrar_resultados_texto(texto_resultado)
+        elif isinstance(resultados, list) and not resultados:
+            self._mostrar_resultados_texto(f"No se encontraron movimientos para el mes {mes}.")
+
+    def mostrar_entradas_op8(self):
+        self._clear_input_frame()
+        ttk.Label(self.input_frame, text="Patrón de Nombre (ej. calamar):").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.entrada_op8_patron = ttk.Entry(self.input_frame, width=30)
+        self.entrada_op8_patron.grid(row=0, column=1, padx=5, pady=5)
+        ttk.Button(self.input_frame, text="Consultar", command=self.ejecutar_op8).grid(row=1, column=0, columnspan=2, pady=10)
+
+    def ejecutar_op8(self):
+        patron = self.entrada_op8_patron.get()
+        if not patron:
+            messagebox.showwarning("Entrada Inválida", "Por favor, ingrese un patrón de búsqueda.")
+            return
+
+        self.limpiar_area_resultados()
+        resultados = self._manejar_llamada_bd(fn_mime.obtener_total_salidas_por_producto_conjunto, patron)
+        if resultados:
+            texto_resultado = f"--- Totales de Salida por Conjunto: {patron} ---\n"
+            gran_total = 0
+            for row in resultados:
+                for i, col in enumerate(COLUMN_NAMES_CONJUNTO):
+                    texto_resultado += f"  {col}: {row[i]}\n"
+                gran_total += float(row[1])
+                texto_resultado += "-" * 20 + "\n"
+            texto_resultado += f"\nTOTAL CONJUNTO: {gran_total}\n"
+            self._mostrar_resultados_texto(texto_resultado)
+        elif isinstance(resultados, list) and not resultados:
+            self._mostrar_resultados_texto(f"No se encontraron salidas para productos que coincidan con '{patron}'.")
 
 if __name__ == "__main__":
     # Test de conexión inicial para feedback temprano si la BD no está accesible
